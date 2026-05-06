@@ -42,8 +42,7 @@ supervisedmdamber.py --help
 9. Output files  
 10. How to monitor progress  
 11. Common problems and checks  
-12. Citation  
-13. Appendix A. Helper scripts  
+Appendix A. Helper scripts  
 
 ---
 
@@ -525,18 +524,6 @@ Example:
 ```text
 sumdprogress.log.20260506_143012
 ```
-
----
-
-# 12. Citation
-
-Original SuMD method:
-
-Sabbadin, Davide, and Stefano Moro.
-
-*"Supervised molecular dynamics (SuMD) as a helpful tool to depict GPCR-ligand recognition pathway in a nanosecond time scale."*
-
-Journal of Chemical Information and Modeling 54.2 (2014): 372-376.
 
 ---
 
