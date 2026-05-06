@@ -337,9 +337,21 @@ python supervisedmdamber.py -i input_parameters.txt
 Example:
 
 ```bash
+#!/bin/bash
+#SBATCH -A naiss2025-3-21
+#SBATCH -p tetralith
+#SBATCH -t 24:00:00
+#SBATCH -J sumd
+#SBATCH --nodes=3
+#SBATCH --ntasks-per-node=32
+#SBATCH --cpus-per-task=1
+#SBATCH -o sumd-%j.out
+#SBATCH -e sumd-%j.err
+
 module load Amber/24-nsc1-gcccuda-12.2-g11-hpc1
 
-source /path/to/conda.sh
+unset PYTHONPATH
+source /proj/carlssonlab/users/x_midma/miniforge3/etc/profile.d/conda.sh
 conda activate ae-ml
 
 python supervisedmdamber.py -i input_parameters.txt
