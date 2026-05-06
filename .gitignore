@@ -1,0 +1,5 @@
+*.nc
+prod*
+additional_data/
+__pycache__/
+*.pyc
