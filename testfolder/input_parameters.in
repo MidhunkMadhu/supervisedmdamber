@@ -34,7 +34,7 @@ MAXSTEP=100,
 # Amber mdin template
 # Use sumd.in for cMD
 # Use suGamd.in for GaMD
-INPUT_MDIN_FILE="sumd.in",
+INPUT_MDIN_FILE="sumd.mdin",
 
 # Amber topology
 AMBER_PARAMETER_FILE="example.parm7",
