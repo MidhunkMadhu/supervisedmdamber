@@ -1,6 +1,6 @@
 
-## headers for submission #
+# ad headers #
 
-conda activate ae-ml
+conda activate sumd
 
-python supervisedmdamber.py -i input_parameters.txt
+supervisedmdamber -i input_parameters.in
