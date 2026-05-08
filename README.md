@@ -450,7 +450,7 @@ Example:
 ```text
 &parameters
 CPPTRAJ="cpptraj",
-AMBEREXE="pmemd.cuda",
+AMBEREXE="pmemd.MPI",
 METHOD=cMD,
 MPIPREFIX="mpirun -np 16",
 TIME_WINDOW_PS=100,
