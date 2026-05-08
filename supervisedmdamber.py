@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import sys
 import glob
 import shlex
 import shutil
@@ -9,7 +10,8 @@ import subprocess
 from pathlib import Path
 from datetime import datetime
 
-RUN_DIR = Path("./RunMDSupervised")
+SCRIPT_DIR = Path(__file__).resolve().parent
+RUN_DIR = SCRIPT_DIR / "helpfolder"
 LOG_FILE = "sumdprogress.log"
 
 INT_KEYS = ["TIME_WINDOW_PS", "TIMESTEP_FS", "MDOUTSTEP", "TRAJOUTSTEP", "MAXSTEP"]
@@ -68,11 +70,11 @@ Current implementation:
   - Creates combined supervised trajectories
 
 Usage:
-    supervisedmdamber.py -i input_parameters.txt
+    supervisedmdamber -i input_parameters.txt
 
 Help:
-    supervisedmdamber.py -h
-    supervisedmdamber.py --help
+    supervisedmdamber -h
+    supervisedmdamber --help
 ================================================================================
 """
     print(banner)
@@ -197,6 +199,30 @@ def check_file(path, label):
         raise FileNotFoundError(f"{label} missing: {path}")
 
 
+def check_helper_folder():
+    if not RUN_DIR.exists():
+        raise FileNotFoundError(f"helpfolder missing: {RUN_DIR}")
+
+    required_helpers = [
+        "generate_fitCPPIN.py",
+        "generate_calcCPPIN.py",
+        "modify_mdin.py",
+        "extract_and_fit.py",
+        "log_creater.py",
+        "extract_first_MDOUTline.py",
+        "create_unique_starting_points.py",
+        "delete_extra_nc_files.py",
+        "create_traj.py",
+    ]
+
+    missing = [str(RUN_DIR / f) for f in required_helpers if not (RUN_DIR / f).exists()]
+
+    if missing:
+        raise FileNotFoundError(
+            "Missing helper scripts:\n" + "\n".join(missing)
+        )
+
+
 def safe_copy(src, dst):
     check_file(src, "copy source")
     shutil.copy(src, dst)
@@ -275,7 +301,7 @@ def process_outputs(step, cpptraj):
     run_cmd([cpptraj, "-i", "calc_rmsd.cppin"])
 
     run_cmd([
-        "python",
+        sys.executable,
         str(RUN_DIR / "extract_and_fit.py"),
         "ligandRMSD.xvg",
         "slope.dat",
@@ -304,10 +330,11 @@ def update_starting_points_and_trajectory(parm, trajoutname, first_step):
     slope_files = sorted(glob.glob("prod_slope_*.dat"))
 
     if slope_files:
-        run_cmd(["python", str(RUN_DIR / "log_creater.py")] + slope_files)
+        run_cmd([sys.executable, str(RUN_DIR / "log_creater.py")] + slope_files)
 
     run_cmd(
-        f"python {RUN_DIR / 'extract_first_MDOUTline.py'} {first_step} > first_MDOUTlines.dat",
+        f"{shlex.quote(sys.executable)} {shlex.quote(str(RUN_DIR / 'extract_first_MDOUTline.py'))} "
+        f"{first_step} > first_MDOUTlines.dat",
         shell=True,
     )
 
@@ -325,7 +352,7 @@ def update_starting_points_and_trajectory(parm, trajoutname, first_step):
     )
 
     run_cmd([
-        "python",
+        sys.executable,
         str(RUN_DIR / "create_unique_starting_points.py"),
         "all_starting_points.dat",
         "unique_starting_points.dat",
@@ -335,7 +362,7 @@ def update_starting_points_and_trajectory(parm, trajoutname, first_step):
     safe_remove("first_MDOUTlines.dat", "all_starting_points_temp.dat")
 
     run_cmd([
-        "python",
+        sys.executable,
         str(RUN_DIR / "delete_extra_nc_files.py"),
         "duplicates_output.txt",
     ])
@@ -343,7 +370,7 @@ def update_starting_points_and_trajectory(parm, trajoutname, first_step):
     safe_remove(trajoutname)
 
     run_cmd([
-        "python",
+        sys.executable,
         str(RUN_DIR / "create_traj.py"),
         "unique_starting_points.dat",
         parm,
@@ -389,9 +416,9 @@ def move_final_outputs_to_additional_data():
 
 def main():
     parser = argparse.ArgumentParser(
-        prog="supervisedmdamber.py",
+        prog="supervisedmdamber",
         description="Supervised Molecular Dynamics driver for Amber",
-        usage="supervisedmdamber.py -i input_parameters.txt",
+        usage="supervisedmdamber -i input_parameters.txt",
     )
 
     parser.add_argument(
@@ -402,6 +429,8 @@ def main():
     )
 
     args = parser.parse_args()
+
+    check_helper_folder()
 
     params = read_input_parameters(args.input)
 
@@ -442,9 +471,11 @@ def main():
     print_and_log(f"MAXSTEP = {max_step}")
     print_and_log(f"FIRST_STEP = {first_step}")
     print_and_log(f"Final trajectory = {trajoutname}")
+    print_and_log(f"Helper folder = {RUN_DIR}")
+    print_and_log(f"Python executable = {sys.executable}")
 
     run_cmd([
-        "python",
+        sys.executable,
         str(RUN_DIR / "generate_fitCPPIN.py"),
         parm,
         pdbalign,
@@ -453,7 +484,7 @@ def main():
     ])
 
     run_cmd([
-        "python",
+        sys.executable,
         str(RUN_DIR / "generate_calcCPPIN.py"),
         parm,
         pdbalign,
@@ -462,7 +493,7 @@ def main():
     ])
 
     run_cmd([
-        "python",
+        sys.executable,
         str(RUN_DIR / "modify_mdin.py"),
         str(timestep_fs),
         str(time_window_ps),
@@ -524,7 +555,7 @@ def main():
     slope_files = sorted(glob.glob("prod_slope_*.dat"))
 
     if slope_files:
-        run_cmd(["python", str(RUN_DIR / "log_creater.py")] + slope_files)
+        run_cmd([sys.executable, str(RUN_DIR / "log_creater.py")] + slope_files)
 
     if os.path.exists("concat.cppin"):
         run_cmd([cpptraj, "-i", "concat.cppin"])

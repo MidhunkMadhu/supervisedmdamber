@@ -1,0 +1,49 @@
+A NVT simulation for common production-level simulations
+ &cntrl
+    imin=0,
+    irest=1,
+    ntx=5,
+
+    nstlim=100000,
+    dt=0.002,
+
+    ! SHAKE for restraining bonds involving Hydrogen
+    ntc=2,
+    ntf=2,
+    tol=0.000001,
+  
+    ! No Wrapping to primary box
+    iwrap=1,
+ 
+    ntb=1,             ! Constant volume PBC
+    ntp=0,             ! No pressure scaling
+
+    ! Potential energy control
+    cut=12.0,      ! nonbonded cutoff, in Angstroms
+    fswitch=10.0,  ! Force-based switching
+
+    ! Langevin Thermostat and temperatures
+    ntt=3,
+    temp0=310.0,
+    tempi=310.0,
+    gamma_ln=5.0,
+
+    ! Control how often information is printed
+    ntpr=100,     ! Print energies every 1000 steps
+    ntwx=500,    ! Print coordinates every 25000 steps to the trajectory => 50ps
+    ntwr=1000,    ! Print a restart file every 10K steps (can be less frequent)
+!   ntwv=-1,       ! Uncomment to also print velocities to trajectory
+!   ntwf=-1,       ! Uncomment to also print forces to trajectory
+    ntxo=2,        ! Write NetCDF format
+    ioutfm=1,      ! Write NetCDF format (always do this!)
+
+    ! Set water atom/residue names for SETTLE recognition
+    watnam='TIP3',  ! Water residues are named TIP3
+    owtnm='OH2',     ! Water oxygens are named O
+
+   /  
+    
+ &ewald
+    vdwmeth=1,
+    dsum_tol=0.000001,
+   /
