@@ -335,13 +335,13 @@ Example:
 bash run_sumd.sh
 ```
 
-Even on local machines, long simulations are better launched using:
+OR
 
 ```bash
 nohup bash run_sumd.sh &
 ```
 
-This allows the workflow to continue running after terminal disconnection.
+Nohup allows the workflow to continue running after terminal disconnection (recommended).
 
 ---
 
@@ -351,8 +351,6 @@ Example `run_sumd.sh`:
 
 ```bash
 #!/bin/bash
-
-source ~/miniconda3/etc/profile.d/conda.sh
 
 conda activate sumd
 
@@ -405,7 +403,7 @@ Submit using:
 sbatch run_sumd.sh
 ```
 
-Edit the SLURM resource headers appropriately depending on the target cluster configuration.
+Edit the SLURM resource headers, module-loading commands, and Conda sourcing commands appropriately for the target cluster. If Conda is already sourced or available in the environment via a module-loading command, the explicit Conda sourcing command can be skipped.
 
 ---
 
@@ -439,7 +437,7 @@ Submit using:
 qsub run_sumd.sh
 ```
 
-Edit the PBS resource headers appropriately depending on the target cluster configuration.
+Edit the PBS resource headers, module-loading commands, and Conda sourcing commands appropriately for the target cluster. If Conda is already sourced or available in the environment via a module-loading command, the explicit Conda sourcing command can be skipped.
 
 ---
 
