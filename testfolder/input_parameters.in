@@ -5,13 +5,16 @@ CPPTRAJ="cpptraj",
 
 # Amber executable
 # Examples: sander, pmemd, pmemd.cuda, pmemd.MPI
-AMBEREXE="pmemd.cuda",
+AMBEREXE="pmemd.MPI",
+
+# MPI launch command
+MPIPREFIX="mpirun -np 160",
 
 # Use cMD or GaMD
-METHOD=GaMD,
+METHOD=cMD,
 
 # Length of each supervised MD window in ps
-TIME_WINDOW_PS=600,
+TIME_WINDOW_PS=20,
 
 # RMSD cutoff for convergence
 COLVARCUT=2.0,
@@ -20,18 +23,18 @@ COLVARCUT=2.0,
 TIMESTEP_FS=2,
 
 # mdout print frequency in MD steps
-MDOUTSTEP=100,
+MDOUTSTEP=20,
 
 # trajectory write frequency in MD steps
-TRAJOUTSTEP=500,
+TRAJOUTSTEP=20,
 
 # Maximum number of supervised cycles
-MAXSTEP=5000,
+MAXSTEP=100,
 
 # Amber mdin template
 # Use sumd.in for cMD
 # Use suGamd.in for GaMD
-INPUT_MDIN_FILE="suGamd.in",
+INPUT_MDIN_FILE="sumd.in",
 
 # Amber topology
 AMBER_PARAMETER_FILE="example.parm7",
