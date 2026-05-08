@@ -184,7 +184,7 @@ supervisedmdamber -h
 Expected output:
 
 ```text
-usage: supervisedmdamber -i input_parameters.txt
+usage: supervisedmdamber -i input_parameters.in
 ```
 
 ---
@@ -214,7 +214,7 @@ supervisedmdamber/
     ├── example.parm7
     ├── example.rst7
     ├── ref_example.pdb
-    ├── input_parameters.txt
+    ├── input_parameters.in
     ├── gamd-restart.dat
     ├── sumd.in
     ├── suGamd.in
@@ -272,7 +272,7 @@ This folder includes:
 | `example.parm7` | Amber topology |
 | `example.rst7` | Initial restart |
 | `ref_example.pdb` | Reference bound structure |
-| `input_parameters.txt` | Main workflow parameter file |
+| `input_parameters.in` | Main workflow parameter file |
 | `gamd-restart.dat` | Required only for GaMD |
 | `sumd.in` | Example cMD mdin template |
 | `suGamd.in` | Example GaMD mdin template |
@@ -293,7 +293,7 @@ The example folder should contain:
 - `example.parm7`
 - `example.rst7`
 - `ref_example.pdb`
-- `input_parameters.txt`
+- `input_parameters.in`
 - `sumd.in`
 - `suGamd.in`
 
@@ -320,7 +320,7 @@ gamd-restart.dat
 ## Direct Execution
 
 ```bash
-supervisedmdamber -i input_parameters.txt
+supervisedmdamber -i input_parameters.in
 ```
 
 ---
@@ -356,7 +356,7 @@ source ~/miniconda3/etc/profile.d/conda.sh
 
 conda activate sumd
 
-supervisedmdamber -i input_parameters.txt
+supervisedmdamber -i input_parameters.in
 ```
 
 Make executable:
@@ -396,7 +396,7 @@ source ~/miniconda3/etc/profile.d/conda.sh
 
 conda activate sumd
 
-supervisedmdamber -i input_parameters.txt
+supervisedmdamber -i input_parameters.in
 ```
 
 Submit using:
@@ -430,7 +430,7 @@ source ~/miniconda3/etc/profile.d/conda.sh
 
 conda activate sumd
 
-supervisedmdamber -i input_parameters.txt
+supervisedmdamber -i input_parameters.in
 ```
 
 Submit using:
