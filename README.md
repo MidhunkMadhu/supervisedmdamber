@@ -261,25 +261,6 @@ Users normally do not need to execute these scripts manually.
 
 ---
 
-## testfolder/
-
-Contains a prepared example workflow.
-
-This folder includes:
-
-| File | Purpose |
-|---|---|
-| `example.parm7` | Amber topology |
-| `example.rst7` | Initial restart |
-| `ref_example.pdb` | Reference bound structure |
-| `input_parameters.in` | Main workflow parameter file |
-| `gamd-restart.dat` | Required only for GaMD |
-| `sumd.in` | Example cMD mdin template |
-| `suGamd.in` | Example GaMD mdin template |
-| `run_sumd.sh` | Example execution script |
-
----
-
 # Tutorial
 
 After installation, move into the example workflow folder:
