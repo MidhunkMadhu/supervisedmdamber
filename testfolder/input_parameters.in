@@ -1,0 +1,58 @@
+&parameters
+
+# cpptraj executable
+CPPTRAJ="cpptraj",
+
+# Amber executable
+# Examples: sander, pmemd, pmemd.cuda, pmemd.MPI
+AMBEREXE="pmemd.cuda",
+
+# Use cMD or GaMD
+METHOD=GaMD,
+
+# Length of each supervised MD window in ps
+TIME_WINDOW_PS=600,
+
+# RMSD cutoff for convergence
+COLVARCUT=2.0,
+
+# MD timestep in fs
+TIMESTEP_FS=2,
+
+# mdout print frequency in MD steps
+MDOUTSTEP=100,
+
+# trajectory write frequency in MD steps
+TRAJOUTSTEP=500,
+
+# Maximum number of supervised cycles
+MAXSTEP=5000,
+
+# Amber mdin template
+# Use sumd.in for cMD
+# Use suGamd.in for GaMD
+INPUT_MDIN_FILE="suGamd.in",
+
+# Amber topology
+AMBER_PARAMETER_FILE="example.parm7",
+
+# Starting restart file
+# For GaMD, this should usually be the restart from the short preparatory GaMD production run
+RESTART_FILE="example.rst7",
+
+# Final combined supervised trajectory name
+TRAJOUTNAME="traj.nc",
+
+# Reference bound structure
+PDBALIGN="ref_example.pdb",
+
+# Fitting masks
+FIT_TRAJ_STRING="1-313@CA",
+FIT_PDB_STRING="1-313@CA",
+
+# RMSD masks
+# Example: ligand residue 314 excluding hydrogens
+CALCRMSD_TRAJ_STRING="314&!@H=",
+CALCRMSD_PDB_STRING="314&!@H=",
+
+/

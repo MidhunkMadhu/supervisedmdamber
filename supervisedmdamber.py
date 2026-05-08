@@ -70,7 +70,7 @@ Current implementation:
   - Creates combined supervised trajectories
 
 Usage:
-    supervisedmdamber -i input_parameters.txt
+    supervisedmdamber -i input_parameters.in
 
 Help:
     supervisedmdamber -h
@@ -418,7 +418,7 @@ def main():
     parser = argparse.ArgumentParser(
         prog="supervisedmdamber",
         description="Supervised Molecular Dynamics driver for Amber",
-        usage="supervisedmdamber -i input_parameters.txt",
+        usage="supervisedmdamber -i input_parameters.in",
     )
 
     parser.add_argument(

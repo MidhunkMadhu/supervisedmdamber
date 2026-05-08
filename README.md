@@ -1,81 +1,33 @@
-# supervisedmdamber.py
+# supervisedmdamber
 
-## User Guide and Reference Documentation
+## Supervised Molecular Dynamics (SuMD) and Supervised Gaussian Accelerated Molecular Dynamics (SuGaMD) for Amber
 
-### Supervised Molecular Dynamics (SuMD) and Supervised Gaussian Accelerated MD (SuGaMD) for Amber
-
-Amber implementation by Midhun K Madhu
+Implementation using Amber MD suite by Midhun K Madhu
 
 ---
 
-# Purpose
+# Overview
 
-This document explains what the `supervisedmdamber.py` workflow does, how to prepare the working directory, how to choose parameters, how to run the script, and how to interpret the outputs. It is written for a new user who may not already know the SuMD workflow.
+`supervisedmdamber` is a Python-based workflow driver for performing:
 
----
+- Supervised Molecular Dynamics (SuMD)
+- Supervised Gaussian Accelerated Molecular Dynamics (SuGaMD)
 
-# Basic Run
+using the Amber MD suite.
 
-```bash
-supervisedmdamber.py -i input_parameters.txt
-```
+The workflow automates repeated short molecular dynamics windows and evaluates ligand progress toward a reference bound pose using RMSD-based supervision.
 
-# Help
+The implementation uses:
 
-```bash
-supervisedmdamber.py -h
-supervisedmdamber.py --help
-```
+- Classical MD supervised workflows
+- Gaussian accelerated MD supervised workflows
+- Automatic RMSD evaluation
+- Linear regression slope estimation
+- Restart-state decision making
+- Duplicate trajectory branch removal
+- Automatic construction of combined supervised trajectories
 
----
-
-# Contents
-
-1. Overview  
-2. What the script does  
-3. Required software  
-4. Required folder structure  
-5. Input parameter file  
-6. Detailed parameter reference  
-7. How to run  
-8. Step-by-step internal workflow  
-9. Output files  
-10. How to monitor progress  
-11. Common problems and checks  
-Appendix A. Helper scripts  
-
----
-
-# 1. Overview
-
-`supervisedmdamber.py` is a Python driver script for running supervised molecular dynamics with Amber. It automates a repeated cycle of:
-
-- Short MD simulations
-- Trajectory fitting
-- RMSD calculation
-- Slope estimation
-- Restart selection
-- Duplicate branch removal
-- Final trajectory creation
-
-The current implementation uses ligand RMSD as the collective variable.
-
-A lower ligand RMSD means that the ligand is closer to the reference bound pose.
-
-The script can later be modified to use other collective variables such as:
-
-- Ligand-pocket distances
-- Contacts
-- Angles
-- Custom reaction coordinates
-
-Reference method:
-
-The SuMD approach was introduced by Sabbadin and Moro in 2014 for studying GPCR-ligand recognition pathways on nanosecond timescales. Their original implementation used ACEMD. This implementation adapts the workflow to Amber.
-
----
-
-## 1.1 Method citation
+The workflow was inspired by the original SuMD methodology introduced by:
 
 Sabbadin, Davide, and Stefano Moro.
 
@@ -85,67 +37,28 @@ Journal of Chemical Information and Modeling 54.2 (2014): 372-376.
 
 ---
 
-## 1.2 Amber implementation
+# Important Requirements Before Starting
 
-The Amber implementation script supports:
+This workflow is not intended to start from an unequilibrated system.
 
-- cMD supervised workflows
-- GaMD supervised workflows
-- RMSD-based collective variables
-- Slope and CV tracking
-- Duplicate branch detection
-- Combined supervised trajectory generation
+The system must already be properly equilibrated before starting supervised simulations.
 
----
-
-# 2. What the script does
-
-Instead of running one very long trajectory, the script runs many short trajectories.
-
-After each short window, the workflow checks whether the ligand has moved in a useful direction toward the reference bound pose.
-
-This is decided from the RMSD trend during the window.
-
-Main workflow logic:
-
-- If ligand RMSD improves, the next window continues from the latest restart
-- If ligand RMSD worsens, the script can revert to the previous restart
-- If RMSD falls below cutoff and slope is non-positive, the run converges
-- Duplicate trajectory branches are automatically removed
-- A final combined supervised trajectory is generated
-
----
-
-## 2.1 Main decision quantities
-
-| Quantity | Meaning | How it is used |
-|---|---|---|
-| CV value | Final RMSD value from current trajectory window | Compared with `COLVARCUT` |
-| Slope | Linear regression slope of RMSD | Indicates productive or unproductive movement |
-| COLVARCUT | Convergence cutoff | Stops run when `CV < COLVARCUT and slope <= 0` |
-
----
-
-# 3. Required software
-
-| Software | Required? | Purpose |
-|---|---|---|
-| Python 3 | Required | Runs workflow and helper scripts |
-| NumPy | Required | Numerical processing |
-| SciPy | Required | Linear regression |
-| Amber | Required | Provides MD engines and cpptraj |
-| cpptraj | Required | Trajectory fitting and RMSD analysis |
-| MPI launcher | Only for `pmemd.MPI` | MPI execution |
-
-Example MPI prefix:
+The ligand should initially be positioned sufficiently far away from any non-hydrogen atom of the receptor, typically:
 
 ```text
-MPIPREFIX="mpirun -np 16"
+25 to 30 Å
 ```
+
+The workflow assumes that:
+
+- The receptor structure is equilibrated
+- The membrane and solvent are equilibrated
+- The production-ready restart file already exists
+- The reference bound pose structure is already known as a reference PDB file
 
 ---
 
-## GaMD requirement
+# Additional Requirements for GaMD
 
 For:
 
@@ -153,95 +66,390 @@ For:
 METHOD=GaMD
 ```
 
-the file:
+additional preparation steps are required before supervised simulations can begin.
+
+The following steps must already be completed:
+
+1. Standard equilibration
+2. GaMD equilibration
+3. GaMD statistics collection phase
+4. Creation of `gamd-restart.dat`
+5. A short GaMD production run, typically around:
+
+```text
+1 ns
+```
+
+to ensure the system is fully prepared to continue GaMD production. The restart file for SuGaMD should come from this short GaMD production run.
+
+The file:
 
 ```text
 gamd-restart.dat
 ```
 
-must already exist in the working directory.
+must already exist before starting the supervised GaMD workflow.
+
+Do not rename this file.
+
+If classical MD supervision is used:
+
+```text
+METHOD=cMD
+```
+
+then `gamd-restart.dat` is not required.
 
 ---
 
-# 4. Required folder structure
+# Software Requirements
+
+The following software must already be installed and available in the environment.
+
+| Software | Purpose |
+|---|---|
+| Python 3.11+ | Main workflow |
+| NumPy | Numerical processing |
+| SciPy | Linear regression |
+| Amber / AmberTools | MD execution and trajectory processing |
+| cpptraj | RMSD calculations and trajectory fitting |
+| awk | Internal bookkeeping |
+| sort | Sorting operations |
+
+Amber executables can be selected in the input parameter file using:
 
 ```text
-SuMD_sample_runfolder/
+AMBEREXE
+```
+
+Examples include:
+
+```text
+sander
+pmemd
+pmemd.cuda
+pmemd.MPI
+```
+
+---
+
+# Cloning the Repository
+
+Clone the repository:
+
+```bash
+git clone https://github.com/MidhunkMadhu/supervisedmdamber.git
+```
+
+Enter the directory:
+
+```bash
+cd supervisedmdamber
+```
+
+---
+
+# Installation
+
+Create a conda environment:
+
+```bash
+conda create -n sumd python=3.11 numpy scipy pip -y
+```
+
+Activate the environment:
+
+```bash
+conda activate sumd
+```
+
+Install the package:
+
+```bash
+python -m pip install -e .
+```
+
+Check installation:
+
+```bash
+which supervisedmdamber
+```
+
+Check help:
+
+```bash
+supervisedmdamber -h
+```
+
+Expected output:
+
+```text
+usage: supervisedmdamber -i input_parameters.txt
+```
+
+---
+
+# Repository Structure
+
+```text
+supervisedmdamber/
 │
 ├── supervisedmdamber.py
-├── input_parameters.txt
-├── check.parm7
-├── equil_1.rst7
-├── test.pdb
-├── gamd-restart.dat
+├── README.md
+├── pyproject.toml
+├── setup.py
 │
-└── RunMDSupervised/
-    ├── create_traj.py
-    ├── create_unique_starting_points.py
-    ├── delete_extra_nc_files.py
-    ├── extract_and_fit.py
-    ├── extract_first_MDOUTline.py
-    ├── generate_calcCPPIN.py
-    ├── generate_fitCPPIN.py
-    ├── log_creater.py
-    ├── modify_mdin.py
-    ├── suGamd.mdin
-    └── sumd.mdin
+├── helpfolder/
+│   ├── create_traj.py
+│   ├── create_unique_starting_points.py
+│   ├── delete_extra_nc_files.py
+│   ├── extract_and_fit.py
+│   ├── extract_first_MDOUTline.py
+│   ├── generate_calcCPPIN.py
+│   ├── generate_fitCPPIN.py
+│   ├── log_creater.py
+│   └── modify_mdin.py
+│
+└── testfolder/
+    ├── example.parm7
+    ├── example.rst7
+    ├── ref_example.pdb
+    ├── input_parameters.txt
+    ├── gamd-restart.dat
+    ├── sumd.in
+    ├── suGamd.in
+    └── run_sumd.sh
 ```
 
 ---
 
-## 4.1 Files needed before starting
+# Description of Main Components
 
-| File or folder | Required? | Description |
-|---|---|---|
-| supervisedmdamber.py | Required | Main workflow driver |
-| input_parameters.txt | Required | Main parameter file |
-| check.parm7 | Required | Amber topology |
-| equil_1.rst7 | Required | Initial restart |
-| test.pdb | Required | Reference structure |
-| gamd-restart.dat | Required for GaMD | GaMD restart statistics |
-| RunMDSupervised/ | Required | Helper scripts |
+## supervisedmdamber.py
+
+Main workflow driver.
+
+This executable controls:
+
+- MD execution
+- RMSD calculations
+- Restart decisions
+- Trajectory processing
+- Supervised trajectory construction
+
+This is the only executable users normally need to run directly.
 
 ---
 
-## 4.2 Files generated automatically
+## helpfolder/
 
-Generated files include:
+Contains all helper scripts used internally by the workflow.
+
+Users normally do not need to execute these scripts manually.
+
+| Script | Purpose |
+|---|---|
+| `generate_fitCPPIN.py` | Generates the cpptraj input file used for fitting the trajectory to the reference structure |
+| `generate_calcCPPIN.py` | Generates the cpptraj input file used for ligand RMSD calculation |
+| `modify_mdin.py` | Creates `common_prod.mdin` from the selected Amber mdin template by inserting the requested time window, timestep, output frequency, and trajectory frequency |
+| `extract_and_fit.py` | Reads the ligand RMSD profile, performs linear regression, writes the RMSD slope to `slope.dat`, and writes the final collective variable value to `cvval.dat` |
+| `log_creater.py` | Creates or updates the compact supervision summary log from the per-step slope files |
+| `extract_first_MDOUTline.py` | Extracts the first relevant `NSTEP` line from each Amber mdout file for identifying starting points |
+| `create_unique_starting_points.py` | Reads all detected starting points and identifies unique trajectory branches |
+| `delete_extra_nc_files.py` | Removes duplicate trajectory files based on the duplicate-branch list |
+| `create_traj.py` | Creates the cpptraj concatenation script and generates the final combined supervised trajectory |
+
+---
+
+## testfolder/
+
+Contains a prepared example workflow.
+
+This folder includes:
+
+| File | Purpose |
+|---|---|
+| `example.parm7` | Amber topology |
+| `example.rst7` | Initial restart |
+| `ref_example.pdb` | Reference bound structure |
+| `input_parameters.txt` | Main workflow parameter file |
+| `gamd-restart.dat` | Required only for GaMD |
+| `sumd.in` | Example cMD mdin template |
+| `suGamd.in` | Example GaMD mdin template |
+| `run_sumd.sh` | Example execution script |
+
+---
+
+# Tutorial
+
+After installation, move into the example workflow folder:
+
+```bash
+cd testfolder
+```
+
+The example folder should contain:
+
+- `example.parm7`
+- `example.rst7`
+- `ref_example.pdb`
+- `input_parameters.txt`
+- `sumd.in`
+- `suGamd.in`
+
+and additionally:
 
 ```text
-fit.cppin
-calc_rmsd.cppin
-common_prod.mdin
-prod_N.nc
-prod_N.mdout
-prod_N.rst7
-prod_ligandRMSD_N.xvg
-prod_slope_N.dat
-prod_cvval_N.dat
-sumd.log
-sumdprogress.log
-concat.cppin
+gamd-restart.dat
 ```
 
-Old generated files are automatically backed up with timestamps.
+for GaMD workflows.
+
+If GaMD is not required, this file can be ignored.
+
+Do not rename:
+
+```text
+gamd-restart.dat
+```
+
+---
+
+# Running the Workflow
+
+## Direct Execution
+
+```bash
+supervisedmdamber -i input_parameters.txt
+```
+
+---
+
+# Recommended Execution Using a Script
+
+It is generally recommended to run the workflow using a shell script.
 
 Example:
 
-```text
-additional_data.20260506_143012
-sumdprogress.log.20260506_143012
+```bash
+bash run_sumd.sh
+```
+
+Even on local machines, long simulations are better launched using:
+
+```bash
+nohup bash run_sumd.sh &
+```
+
+This allows the workflow to continue running after terminal disconnection.
+
+---
+
+# Example Local Execution Script
+
+Example `run_sumd.sh`:
+
+```bash
+#!/bin/bash
+
+source ~/miniconda3/etc/profile.d/conda.sh
+
+conda activate sumd
+
+supervisedmdamber -i input_parameters.txt
+```
+
+Make executable:
+
+```bash
+chmod +x run_sumd.sh
+```
+
+Run:
+
+```bash
+bash run_sumd.sh
 ```
 
 ---
 
-# 5. Input parameter file
+# Example SLURM Submission Script
+
+Example `run_sumd.sh` for SLURM systems:
+
+```bash
+#!/bin/bash
+#SBATCH -J sumd
+#SBATCH -p gpu
+#SBATCH -t 24:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=1
+#SBATCH -o sumd-%j.out
+#SBATCH -e sumd-%j.err
+
+module load Amber
+
+unset PYTHONPATH
+
+source ~/miniconda3/etc/profile.d/conda.sh
+
+conda activate sumd
+
+supervisedmdamber -i input_parameters.txt
+```
+
+Submit using:
+
+```bash
+sbatch run_sumd.sh
+```
+
+Edit the SLURM resource headers appropriately depending on the target cluster configuration.
+
+---
+
+# Example PBS Submission Script
+
+Example `run_sumd.sh` for PBS systems:
+
+```bash
+#!/bin/bash
+#PBS -N sumd
+#PBS -l walltime=24:00:00
+#PBS -l select=1:ncpus=1:ngpus=1
+#PBS -j oe
+
+cd $PBS_O_WORKDIR
+
+module load Amber
+
+unset PYTHONPATH
+
+source ~/miniconda3/etc/profile.d/conda.sh
+
+conda activate sumd
+
+supervisedmdamber -i input_parameters.txt
+```
+
+Submit using:
+
+```bash
+qsub run_sumd.sh
+```
+
+Edit the PBS resource headers appropriately depending on the target cluster configuration.
+
+---
+
+# Input Parameter File
 
 Example:
 
 ```text
 &parameters
-CPPTRAJ="cpptraj.OMP.cuda",
+CPPTRAJ="cpptraj",
 AMBEREXE="pmemd.cuda",
 METHOD=GaMD,
 TIME_WINDOW_PS=600,
@@ -250,302 +458,274 @@ TIMESTEP_FS=2,
 MDOUTSTEP=100,
 TRAJOUTSTEP=500,
 MAXSTEP=5000,
-INPUT_MDIN_FILE="suGamd.mdin",
-AMBER_PARAMETER_FILE="check.parm7",
-RESTART_FILE="equil_1.rst7",
+INPUT_MDIN_FILE="suGamd.in",
+AMBER_PARAMETER_FILE="example.parm7",
+RESTART_FILE="example.rst7",
 TRAJOUTNAME="traj.nc",
-PDBALIGN="test.pdb",
+PDBALIGN="ref_example.pdb",
 FIT_TRAJ_STRING="1-313@CA",
 FIT_PDB_STRING="1-313@CA",
 CALCRMSD_TRAJ_STRING="314&!@H=",
-CALCRMSD_PDB_STRING="314&!@H=:",
+CALCRMSD_PDB_STRING="314&!@H=",
 /
 ```
 
 ---
 
-## 5.1 MPI example
+# Description of Input Parameters
+
+| Parameter | Required? | Type | Description |
+|---|---|---|---|
+| `CPPTRAJ` | Yes | string | cpptraj executable name or path. Example: `cpptraj` |
+| `AMBEREXE` | Yes | string | Amber MD executable name or path. Example: `sander`, `pmemd`, `pmemd.cuda`, or `pmemd.MPI` |
+| `MPIPREFIX` | Required only for `pmemd.MPI` | string | MPI launch command. Example: `mpirun -np 16` |
+| `METHOD` | Yes | string | Simulation method. Must be `cMD` or `GaMD` |
+| `TIME_WINDOW_PS` | Yes | integer | Length of each supervised MD window in picoseconds |
+| `COLVARCUT` | Yes | float | RMSD cutoff for convergence |
+| `TIMESTEP_FS` | Yes | integer | MD timestep in femtoseconds |
+| `MDOUTSTEP` | Yes | integer | Amber mdout print frequency in MD steps |
+| `TRAJOUTSTEP` | Yes | integer | Trajectory write frequency in MD steps |
+| `MAXSTEP` | Yes | integer | Maximum number of supervised cycles |
+| `INPUT_MDIN_FILE` | Yes | string | Amber mdin template used to generate `common_prod.mdin` |
+| `AMBER_PARAMETER_FILE` | Yes | string | Amber topology file |
+| `RESTART_FILE` | Yes | string | Initial restart file |
+| `TRAJOUTNAME` | Yes | string | Name of the final combined supervised trajectory |
+| `PDBALIGN` | Yes | string | Reference PDB structure used by cpptraj |
+| `FIT_TRAJ_STRING` | Yes | string | cpptraj mask used to fit each trajectory window |
+| `FIT_PDB_STRING` | Yes | string | cpptraj mask used to fit the reference PDB |
+| `CALCRMSD_TRAJ_STRING` | Yes | string | cpptraj mask used to calculate RMSD from the trajectory |
+| `CALCRMSD_PDB_STRING` | Yes | string | cpptraj mask used to calculate RMSD from the reference PDB |
+
+---
+
+# Meaning of Key Parameters
+
+## `TIME_WINDOW_PS`
+
+This controls the length of each supervised MD segment.
+
+For example:
 
 ```text
-AMBEREXE="pmemd.MPI",
-MPIPREFIX="mpirun -np 16",
+TIME_WINDOW_PS=600
 ```
+
+means each supervised window is 600 ps long.
 
 ---
 
-# 6. Detailed parameter reference
+## `COLVARCUT`
 
-| Parameter | Explanation |
-|---|---|
-| CPPTRAJ | cpptraj executable |
-| AMBEREXE | Amber MD executable |
-| MPIPREFIX | MPI launcher prefix |
-| METHOD | cMD or GaMD |
-| TIME_WINDOW_PS | Length of each MD window |
-| COLVARCUT | RMSD convergence cutoff |
-| TIMESTEP_FS | MD timestep |
-| MDOUTSTEP | ntpr frequency |
-| TRAJOUTSTEP | ntwx frequency |
-| MAXSTEP | Maximum supervised cycles |
-| INPUT_MDIN_FILE | mdin template |
-| AMBER_PARAMETER_FILE | Amber topology |
-| RESTART_FILE | Initial restart |
-| TRAJOUTNAME | Final trajectory name |
-| PDBALIGN | Reference structure |
-| FIT_TRAJ_STRING | Fitting mask |
-| FIT_PDB_STRING | Reference fitting mask |
-| CALCRMSD_TRAJ_STRING | RMSD trajectory mask |
-| CALCRMSD_PDB_STRING | RMSD reference mask |
+This is the convergence cutoff for the collective variable.
 
----
+In the current implementation, the collective variable is ligand RMSD.
 
-# 7. How to run
-
-## 7.1 Basic command
-
-```bash
-chmod +x supervisedmdamber.py
-```
-
-```bash
-./supervisedmdamber.py -i input_parameters.txt
-```
-
-or
-
-```bash
-python supervisedmdamber.py -i input_parameters.txt
-```
-
----
-
-## 7.2 Help command
-
-```bash
-./supervisedmdamber.py -h
-```
-
-```bash
-./supervisedmdamber.py --help
-```
-
----
-
-## 7.3 Running on a cluster
-
-Example:
-
-```bash
-#!/bin/bash
-#SBATCH -A naiss2025-3-21
-#SBATCH -p tetralith
-#SBATCH -t 24:00:00
-#SBATCH -J sumd
-#SBATCH --nodes=3
-#SBATCH --ntasks-per-node=32
-#SBATCH --cpus-per-task=1
-#SBATCH -o sumd-%j.out
-#SBATCH -e sumd-%j.err
-
-module load Amber/24-nsc1-gcccuda-12.2-g11-hpc1
-
-unset PYTHONPATH
-source /proj/carlssonlab/users/x_midma/miniforge3/etc/profile.d/conda.sh
-conda activate ae-ml
-
-python supervisedmdamber.py -i input_parameters.txt
-```
-
-Important:
-
-Do not run the script from inside `RunMDSupervised/`.
-
-Run it from the parent working directory.
-
----
-
-# 8. Step-by-step internal workflow
-
-1. Read input parameters  
-2. Backup old generated files  
-3. Initialize logs  
-4. Generate cpptraj scripts  
-5. Generate `common_prod.mdin`  
-6. Run first Amber window  
-7. Perform trajectory fitting  
-8. Calculate ligand RMSD  
-9. Estimate RMSD slope and CV  
-10. Detect duplicate branches  
-11. Remove duplicate trajectories  
-12. Construct supervised trajectory  
-13. Select next restart  
-14. Repeat until convergence or `MAXSTEP`  
-
----
-
-## 8.1 Decision logic
+The workflow stops when:
 
 ```text
-If CV < COLVARCUT and slope <= 0:
-    stop successfully
-
-Else if step > MAXSTEP:
-    stop because maximum cycles were reached
-
-Else if slope <= 0 or (slope > 0 and CV < COLVARCUT):
-    continue from restart.rst7
-
-Else:
-    continue from prev_restart.rst7
+CV < COLVARCUT and slope <= 0
 ```
 
 ---
 
-# 9. Output files
+## `MAXSTEP`
 
-## 9.1 Main outputs
+This is the maximum number of supervised cycles.
 
-| Output | Meaning |
-|---|---|
-| traj.nc | Final supervised trajectory |
-| sumdprogress.log | Full progress log |
-| sumd.log | Compact CV/slope summary |
-| additional_data/ | Per-iteration analysis storage |
+For example:
 
----
+```text
+MAXSTEP=5000
+```
 
-## 9.2 Per-iteration outputs
-
-| Pattern | Meaning |
-|---|---|
-| prod_N.nc | Trajectory for iteration N |
-| prod_N.mdout | Amber output |
-| prod_N.rst7 | Restart file |
-| prod_ligandRMSD_N.xvg | RMSD trace |
-| prod_slope_N.dat | RMSD slope |
-| prod_cvval_N.dat | Final CV |
-| prod_gamd_N.log | GaMD boost log |
+means the workflow can run up to 5000 supervised windows unless convergence is reached earlier.
 
 ---
 
-## 9.3 Tracking and bookkeeping outputs
+## `INPUT_MDIN_FILE`
 
-| File | Meaning |
-|---|---|
-| all_starting_points.dat | All starting points |
-| unique_starting_points.dat | Unique accepted branches |
-| duplicates_output.txt | Duplicate branches |
-| concat.cppin | Final trajectory concatenation script |
+This is the Amber mdin template used for the production window.
+
+For cMD:
+
+```text
+INPUT_MDIN_FILE="sumd.in"
+```
+
+For GaMD:
+
+```text
+INPUT_MDIN_FILE="suGamd.in"
+```
+
+The helper script `modify_mdin.py` reads this file and creates:
+
+```text
+common_prod.mdin
+```
 
 ---
 
-# 10. How to monitor progress
+## `FIT_TRAJ_STRING` and `FIT_PDB_STRING`
 
-Live monitoring:
+These masks define which atoms are used for structural alignment.
+
+Commonly, protein C-alpha atoms are used:
+
+```text
+FIT_TRAJ_STRING="1-313@CA"
+FIT_PDB_STRING="1-313@CA"
+```
+
+---
+
+## `CALCRMSD_TRAJ_STRING` and `CALCRMSD_PDB_STRING`
+
+These masks define the atoms used for RMSD supervision.
+
+For ligand heavy atoms, an example is:
+
+```text
+CALCRMSD_TRAJ_STRING="314&!@H="
+CALCRMSD_PDB_STRING="314&!@H="
+```
+
+This means residue 314 excluding hydrogens.
+
+---
+
+# Workflow Logic
+
+The workflow repeatedly:
+
+1. Runs a short MD window
+2. Fits the trajectory to the reference structure
+3. Calculates ligand RMSD
+4. Estimates RMSD slope using linear regression
+5. Evaluates whether progress is productive
+6. Selects the next restart file
+7. Identifies duplicate trajectory branches
+8. Removes duplicate trajectory files
+9. Updates the combined supervised trajectory
+
+The workflow stops when:
+
+```text
+CV < COLVARCUT and slope <= 0
+```
+
+or when:
+
+```text
+MAXSTEP reached
+```
+
+---
+
+# Restart Decision Logic
+
+After each supervised MD window, the script evaluates the final CV value and RMSD slope.
+
+If:
+
+```text
+CV < COLVARCUT and slope <= 0
+```
+
+the workflow stops.
+
+If:
+
+```text
+slope <= 0
+```
+
+the next cycle continues from the latest accepted restart.
+
+If:
+
+```text
+slope > 0 and CV >= COLVARCUT
+```
+
+the next cycle restarts from the previous restart.
+
+This prevents obviously non-productive RMSD-increasing branches from being extended.
+
+---
+
+# Output Files
+
+| File or folder | Meaning |
+|---|---|
+| `traj.nc` | Combined supervised trajectory |
+| `sumdprogress.log` | Detailed workflow log |
+| `sumd.log` | Compact slope/CV summary |
+| `additional_data/` | Per-step outputs and analysis files |
+| `prod_N.nc` | Trajectory from supervised window N |
+| `prod_N.mdout` | Amber output from supervised window N |
+| `prod_N.rst7` | Restart from supervised window N |
+| `prod_ligandRMSD_N.xvg` | Ligand RMSD profile from window N |
+| `prod_slope_N.dat` | RMSD slope from window N |
+| `prod_cvval_N.dat` | Final CV value from window N |
+| `prod_gamd_N.log` | GaMD log from window N, only for GaMD |
+| `all_starting_points.dat` | All detected trajectory starting points |
+| `unique_starting_points.dat` | Unique trajectory branches |
+| `duplicates_output.txt` | Duplicate trajectory branch list |
+| `concat.cppin` | cpptraj input used to generate the combined trajectory |
+
+Most per-step files are moved into:
+
+```text
+additional_data/
+```
+
+at the end of the workflow.
+
+---
+
+# Monitoring the Run
+
+Follow the detailed log:
 
 ```bash
 tail -f sumdprogress.log
 ```
 
-Compact summary:
+Check the compact summary:
 
 ```bash
 cat sumd.log
 ```
 
-Example:
-
-```text
-STEP = 1    SLOPE = -0.0345    CV VALUE = 8.4123
-STEP = 2    SLOPE = -0.0181    CV VALUE = 7.9322
-```
-
----
-
-# 11. Common problems and checks
-
-## 11.1 GaMD fails immediately
-
-Likely cause:
-
-```text
-gamd-restart.dat
-```
-
-is missing or incompatible.
-
----
-
-## 11.2 cpptraj mask errors
-
-Check:
-
-```text
-FIT_TRAJ_STRING
-FIT_PDB_STRING
-CALCRMSD_TRAJ_STRING
-CALCRMSD_PDB_STRING
-```
-
-Verify residue numbering carefully.
-
----
-
-## 11.3 No convergence
-
-Possible solutions:
-
-- Increase `MAXSTEP`
-- Increase `TIME_WINDOW_PS`
-- Relax `COLVARCUT`
-- Verify reference structure
-- Consider GaMD instead of cMD
-
----
-
-## 11.4 Wrong executable
-
-Check:
+Check generated files:
 
 ```bash
-which pmemd.cuda
-which pmemd.MPI
-which cpptraj
+ls additional_data
 ```
 
 ---
 
-## 11.5 Old files disappearing
+# Important Notes
 
-Old generated files are automatically backed up with timestamp suffixes.
-
-Example:
-
-```text
-sumdprogress.log.20260506_143012
-```
-
----
-
-# Appendix A. Helper scripts
-
-| Script | Purpose |
-|---|---|
-| generate_fitCPPIN.py | Generate fitting cpptraj script |
-| generate_calcCPPIN.py | Generate RMSD cpptraj script |
-| modify_mdin.py | Modify mdin template |
-| extract_and_fit.py | Calculate slope and CV |
-| log_creater.py | Generate compact logs |
-| extract_first_MDOUTline.py | Extract mdout starting points |
-| create_unique_starting_points.py | Remove duplicate branches |
-| delete_extra_nc_files.py | Remove duplicate trajectories |
-| create_traj.py | Generate concatenated trajectory |
+- The workflow currently supports RMSD-based supervision only
+- The choice of RMSD masks strongly affects performance
+- The workflow assumes Amber-compatible topology and trajectory formats
+- Existing generated files are automatically removed before a new run
+- Previous runs are not automatically backed up
+- Duplicate branch analysis is handled using helper scripts
+- `gamd-restart.dat` must not be renamed for GaMD workflows
+- The ligand should be initially placed 25 to 30 Å away from any non-hydrogen atom of the receptor
+- The workflow should only be started from a properly equilibrated system
 
 ---
 
-# mdin templates
+# Citation
 
-| File | Purpose |
-|---|---|
-| suGamd.mdin | GaMD template |
-| sumd.mdin | cMD template |
+If this workflow contributes to published work, please cite:
+
+Sabbadin, Davide, and Stefano Moro.
+
+*"Supervised molecular dynamics (SuMD) as a helpful tool to depict GPCR-ligand recognition pathway in a nanosecond time scale."*
+
+Journal of Chemical Information and Modeling 54.2 (2014): 372-376.
