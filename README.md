@@ -508,10 +508,10 @@ This controls the length of each supervised MD segment.
 For example:
 
 ```text
-TIME_WINDOW_PS=600
+TIME_WINDOW_PS=100
 ```
 
-means each supervised window is 600 ps long.
+means each supervised window is 100 ps long.
 
 ---
 
@@ -536,10 +536,10 @@ This is the maximum number of supervised cycles.
 For example:
 
 ```text
-MAXSTEP=5000
+MAXSTEP=1000
 ```
 
-means the workflow can run up to 5000 supervised windows unless convergence is reached earlier.
+means the workflow can run up to 1000 supervised windows unless convergence is reached earlier.
 
 ---
 
