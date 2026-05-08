@@ -387,6 +387,7 @@ Example `run_sumd.sh` for SLURM systems:
 #SBATCH -e sumd-%j.err
 
 module load Amber
+# module load Anaconda
 
 unset PYTHONPATH
 
@@ -421,6 +422,7 @@ Example `run_sumd.sh` for PBS systems:
 cd $PBS_O_WORKDIR
 
 module load Amber
+# module load Anaconda
 
 unset PYTHONPATH
 
